@@ -1,0 +1,115 @@
+export default async function handler(req, res) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const { question } = req.body;
+
+    if (!question) {
+        return res.status(400).json({ error: 'Question is required' });
+    }
+
+    const apiKey = process.env.OPENROUTER_API_KEY;
+
+    if (!apiKey) {
+        return res.status(500).json({ error: 'API key not configured' });
+    }
+
+    try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://codeviz.vercel.app',
+                'X-Title': 'CodeViz Algorithm Visualizer',
+            },
+            body: JSON.stringify({
+                model: 'openai/gpt-4o',
+                messages: [
+                    {
+                        role: 'system',
+                        content: `You are an expert algorithm instructor. When given a coding question, respond ONLY with valid JSON (no markdown, no backticks, no extra text) in this exact format:
+
+{
+  "name": "Algorithm/Problem Name",
+  "category": "Category (e.g., Arrays, Sorting, Trees, Graphs, Dynamic Programming, Searching, etc.)",
+  "difficulty": "Easy or Medium or Hard",
+  "time": "Time complexity (e.g., O(n), O(n log n), O(n²))",
+  "space": "Space complexity (e.g., O(1), O(n))",
+  "description": "A clear one-line analysis explaining what the problem asks and the core approach to solve it",
+  "keywords": ["keyword1", "keyword2", "keyword3"],
+  "code": {
+    "python": ["line1", "line2", "line3"],
+    "javascript": ["line1", "line2", "line3"],
+    "java": ["line1", "line2", "line3"]
+  },
+  "steps": [
+    {
+      "desc": "Description of what happens at this step",
+      "line": 0,
+      "state": "Current variable states as key-value pairs"
+    }
+  ],
+  "vizType": "one of: array, sort, tree, linkedlist, graph, binary",
+  "vizData": [1, 2, 3, 4, 5],
+  "vizConfig": {
+    "target": 3,
+    "searchTarget": 3
+  }
+}
+
+Rules:
+- vizType must be exactly one of: array, sort, tree, linkedlist, graph, binary
+- vizData should be a small example array (5-8 elements) suitable for visualization
+- steps should have 8-15 representative steps showing the algorithm's key operations
+- line numbers in steps correspond to 0-indexed line numbers in the python code array
+- Each step's state should show variable values at that point
+- code arrays should have clean, readable single-line statements
+- For graph problems, include adjacency info in vizConfig
+- Return ONLY the JSON object, nothing else`
+                    },
+                    {
+                        role: 'user',
+                        content: question
+                    }
+                ],
+                temperature: 0.3,
+                max_tokens: 4000
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            return res.status(500).json({ error: data.error.message || 'API error' });
+        }
+
+        const content = data.choices[0]?.message?.content;
+
+        if (!content) {
+            return res.status(500).json({ error: 'No response from AI' });
+        }
+
+        let parsed;
+        try {
+            const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            parsed = JSON.parse(cleaned);
+        } catch (parseErr) {
+            return res.status(500).json({ error: 'Failed to parse AI response', raw: content });
+        }
+
+        return res.status(200).json(parsed);
+
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+}
