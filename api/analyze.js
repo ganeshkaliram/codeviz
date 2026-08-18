@@ -17,25 +17,25 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Question is required' });
     }
 
-    const apiKey = process.env.XAI_API_KEY;
+    const apiKey = process.env.GOOGLE_AI_KEY;
 
     if (!apiKey) {
         return res.status(500).json({ error: 'API key not configured' });
     }
 
     try {
-        const response = await fetch('https://api.x.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                model: 'grok-4',
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are an expert algorithm instructor. When given a coding question, respond ONLY with valid JSON (no markdown, no backticks, no extra text) in this exact format:
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            role: 'user',
+                            parts: [
+                                {
+                                    text: `You are an expert algorithm instructor. When given a coding question, respond ONLY with valid JSON (no markdown, no backticks, no extra text) in this exact format:
 
 {
   "name": "Algorithm/Problem Name",
@@ -73,17 +73,20 @@ Rules:
 - Each step's state should show variable values at that point
 - code arrays should have clean, readable single-line statements
 - For graph problems, include adjacency info in vizConfig
-- Return ONLY the JSON object, nothing else`
-                    },
-                    {
-                        role: 'user',
-                        content: question
+- Return ONLY the JSON object, nothing else
+
+Question: ${question}`
+                                }
+                            ]
+                        }
+                    ],
+                    generationConfig: {
+                        temperature: 0.3,
+                        maxOutputTokens: 4000
                     }
-                ],
-                temperature: 0.3,
-                max_tokens: 4000
-            })
-        });
+                })
+            }
+        );
 
         const data = await response.json();
 
@@ -91,10 +94,10 @@ Rules:
             return res.status(500).json({ error: data.error.message || 'API error' });
         }
 
-        const content = data.choices[0]?.message?.content;
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!content) {
-            return res.status(500).json({ error: 'No response from AI' });
+            return res.status(500).json({ error: 'No response from AI', raw: JSON.stringify(data) });
         }
 
         let parsed;
