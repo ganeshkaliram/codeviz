@@ -31,7 +31,7 @@ export default async function handler(req, res) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'grok-3-mini',
+                model: 'grok-4',
                 messages: [
                     {
                         role: 'system',
