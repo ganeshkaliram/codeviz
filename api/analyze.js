@@ -17,23 +17,21 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Question is required' });
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = process.env.XAI_API_KEY;
 
     if (!apiKey) {
         return res.status(500).json({ error: 'API key not configured' });
     }
 
     try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        const response = await fetch('https://api.x.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://codeviz.vercel.app',
-                'X-Title': 'CodeViz Algorithm Visualizer',
             },
             body: JSON.stringify({
-                model: 'openai/gpt-4o',
+                model: 'grok-3-mini',
                 messages: [
                     {
                         role: 'system',
