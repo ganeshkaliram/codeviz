@@ -37,55 +37,21 @@ export default async function handler(req, res) {
                     messages: [
                         {
                             role: 'system',
-                            content: 'You MUST respond with valid JSON only. No markdown, no code blocks, no explanation text. Just the raw JSON object. Every string value must be properly quoted. Every array element must be a string in quotes.'
+                            content: 'You MUST respond with valid JSON only. No markdown, no code blocks, no explanation text. Just the raw JSON object. Keep code short (max 10 lines per language). Keep steps to 5-8 max. Use only ASCII characters.'
                         },
                         {
                             role: 'user',
-                            content: `You are an expert algorithm instructor. When given a coding question, respond ONLY with valid JSON (no markdown, no backticks, no extra text) in this exact format:
+                            content: `Return a JSON object for this algorithm question. Format:
+{"name":"Name","category":"Cat","difficulty":"Easy|Medium|Hard","time":"O(n)","space":"O(1)","description":"One line desc","keywords":["k1","k2"],"code":{"python":["line1"],"javascript":["line1"],"java":["line1"]},"steps":[{"desc":"step desc","line":0,"state":{"var":"val"}}],"vizType":"array|sort|tree|linkedlist|graph","vizData":[1,2,3],"vizConfig":{"target":3}}
 
-{
-  "name": "Algorithm/Problem Name",
-  "category": "Category (e.g., Arrays, Sorting, Trees, Graphs, Dynamic Programming, Searching, etc.)",
-  "difficulty": "Easy or Medium or Hard",
-  "time": "Time complexity (e.g., O(n), O(n log n), O(n²))",
-  "space": "Space complexity (e.g., O(1), O(n))",
-  "description": "A clear one-line analysis explaining what the problem asks and the core approach to solve it",
-  "keywords": ["keyword1", "keyword2", "keyword3"],
-  "code": {
-    "python": ["line1", "line2", "line3"],
-    "javascript": ["line1", "line2", "line3"],
-    "java": ["line1", "line2", "line3"]
-  },
-  "steps": [
-    {
-      "desc": "Description of what happens at this step",
-      "line": 0,
-      "state": "Current variable states as key-value pairs"
-    }
-  ],
-  "vizType": "one of: array, sort, tree, linkedlist, graph, binary",
-  "vizData": [1, 2, 3, 4, 5],
-  "vizConfig": {
-    "target": 3,
-    "searchTarget": 3
-  }
-}
-
-Rules:
-- vizType must be exactly one of: array, sort, tree, linkedlist, graph, binary
-- vizData should be a small example array (5-8 elements) suitable for visualization
-- steps should have 8-15 representative steps showing the algorithm's key operations
-- line numbers in steps correspond to 0-indexed line numbers in the python code array
-- Each step's state should show variable values at that point
-- code arrays should have clean, readable single-line statements
-- For graph problems, include adjacency info in vizConfig
-- Return ONLY the JSON object, nothing else
+vizType options: array (for search), sort (for sorting), tree (for tree/recursive), linkedlist, graph
+Keep code under 10 lines per language. 5-8 steps max. Use ASCII only (no special chars like squared symbol).
 
 Question: ${question}`
                         }
                     ],
                     temperature: 0.3,
-                    max_tokens: 8000
+                    max_tokens: 12000
                 })
             }
         );
