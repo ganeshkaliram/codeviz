@@ -100,15 +100,13 @@ Question: ${question}`
 
         let parsed;
         try {
-            const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                parsed = JSON.parse(jsonMatch[0]);
-            } else {
-                throw new Error('No JSON found in response');
-            }
+            parsed = tryParseJSON(content);
         } catch (parseErr) {
-            return res.status(500).json({ error: 'Failed to parse AI response', raw: content });
+            return res.status(500).json({ 
+                error: 'Failed to parse AI response', 
+                raw: content.substring(0, 1000),
+                parseError: parseErr.message 
+            });
         }
 
         return res.status(200).json(parsed);
@@ -116,4 +114,46 @@ Question: ${question}`
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
+}
+
+function tryParseJSON(content) {
+    // Try direct parse first
+    try {
+        return JSON.parse(content);
+    } catch (e) {}
+
+    // Remove markdown code blocks
+    let cleaned = content;
+    cleaned = cleaned.replace(/```json\s*/gi, '').replace(/```\s*/gi, '');
+    cleaned = cleaned.trim();
+    try {
+        return JSON.parse(cleaned);
+    } catch (e) {}
+
+    // Extract JSON using balanced brace matching
+    const json = extractJSON(cleaned);
+    if (json) {
+        try {
+            return JSON.parse(json);
+        } catch (e) {}
+    }
+
+    throw new Error('Could not parse JSON from AI response');
+}
+
+function extractJSON(str) {
+    let depth = 0;
+    let start = -1;
+    for (let i = 0; i < str.length; i++) {
+        if (str[i] === '{') {
+            if (depth === 0) start = i;
+            depth++;
+        } else if (str[i] === '}') {
+            depth--;
+            if (depth === 0 && start >= 0) {
+                return str.substring(start, i + 1);
+            }
+        }
+    }
+    return null;
 }
