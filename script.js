@@ -267,7 +267,11 @@ function generateAnimationSteps(algo) {
 
     switch (algo.vizType) {
         case 'array':
-            generateBinarySearchSteps(algo, data);
+            if (algo.target !== undefined) {
+                generateBinarySearchSteps(algo, data);
+            } else {
+                generateLinearSearchSteps(algo, data);
+            }
             break;
         case 'array-pair':
             generateTwoSumSteps(algo, data);
@@ -286,6 +290,9 @@ function generateAnimationSteps(algo) {
             break;
         case 'binary':
             generateBinarySteps(algo, data);
+            break;
+        default:
+            generateLinearSearchSteps(algo, data);
             break;
     }
 }
@@ -395,6 +402,29 @@ function generateBinarySearchSteps(algo, data) {
         target: target,
         line: 10,
         desc: `Target ${target} not found in array.`
+    });
+}
+
+function generateLinearSearchSteps(algo, data) {
+    for (let i = 0; i < data.length; i++) {
+        animationSteps.push({
+            type: 'search',
+            data: [...data],
+            comparing: i,
+            found: false,
+            target: undefined,
+            line: i,
+            desc: `Processing element arr[${i}] = ${data[i]}`
+        });
+    }
+    animationSteps.push({
+        type: 'search',
+        data: [...data],
+        comparing: -1,
+        found: false,
+        target: undefined,
+        line: data.length,
+        desc: 'Processing complete'
     });
 }
 
@@ -910,6 +940,11 @@ function drawVisualization(step) {
             break;
         case 'binary':
             drawBinaryViz(step);
+            break;
+        default:
+            if (step.data) {
+                drawArrayViz({ ...step, type: 'search', comparing: -1, found: false });
+            }
             break;
     }
 }
