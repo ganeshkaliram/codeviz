@@ -36,6 +36,10 @@ export default async function handler(req, res) {
                     model: 'meta/llama-3.1-8b-instruct',
                     messages: [
                         {
+                            role: 'system',
+                            content: 'You MUST respond with valid JSON only. No markdown, no code blocks, no explanation text. Just the raw JSON object. Every string value must be properly quoted. Every array element must be a string in quotes.'
+                        },
+                        {
                             role: 'user',
                             content: `You are an expert algorithm instructor. When given a coding question, respond ONLY with valid JSON (no markdown, no backticks, no extra text) in this exact format:
 
@@ -135,10 +139,36 @@ function tryParseJSON(content) {
     if (json) {
         try {
             return JSON.parse(json);
-        } catch (e) {}
+        } catch (e) {
+            // Try to repair common JSON issues
+            const repaired = repairJSON(json);
+            if (repaired) {
+                try {
+                    return JSON.parse(repaired);
+                } catch (e2) {}
+            }
+        }
     }
 
     throw new Error('Could not parse JSON from AI response');
+}
+
+function repairJSON(str) {
+    let fixed = str;
+    
+    // Fix unquoted string values in arrays
+    fixed = fixed.replace(/:\s*"([^"]*)"(\[[^\]]*\])/g, ': "$1$2"');
+    
+    // Fix missing commas between array elements that are strings
+    fixed = fixed.replace(/"([^"]*)"\s*\n\s*"/g, '", "');
+    
+    // Remove trailing commas before ] or }
+    fixed = fixed.replace(/,\s*([}\]])/g, '$1');
+    
+    // Fix escaped quotes inside strings
+    fixed = fixed.replace(/\\'/g, "'");
+    
+    return fixed;
 }
 
 function extractJSON(str) {
