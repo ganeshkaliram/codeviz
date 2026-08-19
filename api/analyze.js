@@ -17,7 +17,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Question is required' });
     }
 
-    const apiKey = process.env.GOOGLE_AI_KEY;
+    const apiKey = process.env.NVIDIA_API_KEY;
 
     if (!apiKey) {
         return res.status(500).json({ error: 'API key not configured' });
@@ -25,17 +25,19 @@ export default async function handler(req, res) {
 
     try {
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+            'https://integrate.api.nvidia.com/v1/chat/completions',
             {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
                 body: JSON.stringify({
-                    contents: [
+                    model: 'meta/llama-3.1-8b-instruct',
+                    messages: [
                         {
                             role: 'user',
-                            parts: [
-                                {
-                                    text: `You are an expert algorithm instructor. When given a coding question, respond ONLY with valid JSON (no markdown, no backticks, no extra text) in this exact format:
+                            content: `You are an expert algorithm instructor. When given a coding question, respond ONLY with valid JSON (no markdown, no backticks, no extra text) in this exact format:
 
 {
   "name": "Algorithm/Problem Name",
@@ -76,14 +78,10 @@ Rules:
 - Return ONLY the JSON object, nothing else
 
 Question: ${question}`
-                                }
-                            ]
                         }
                     ],
-                    generationConfig: {
-                        temperature: 0.3,
-                        maxOutputTokens: 4000
-                    }
+                    temperature: 0.3,
+                    max_tokens: 4000
                 })
             }
         );
@@ -94,7 +92,7 @@ Question: ${question}`
             return res.status(500).json({ error: data.error.message || 'API error' });
         }
 
-        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const content = data.choices?.[0]?.message?.content;
 
         if (!content) {
             return res.status(500).json({ error: 'No response from AI', raw: JSON.stringify(data) });
