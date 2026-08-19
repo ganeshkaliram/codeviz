@@ -4,7 +4,7 @@ let isPlaying = false;
 let animationTimer = null;
 let currentStep = 0;
 let animationSteps = [];
-let speed = 1000;
+let speed = 2000;
 
 const canvas = document.getElementById('vizCanvas');
 const ctx = canvas.getContext('2d');
@@ -255,11 +255,79 @@ function generateAnimationSteps(algo) {
     animationSteps = [];
 
     if (algo.isAI && algo.aiSteps && algo.aiSteps.length > 0) {
-        animationSteps = algo.aiSteps.map(step => ({
-            ...step,
-            type: step.type || algo.vizType || 'array',
-            data: step.data || [...algo.vizData]
-        }));
+        animationSteps = algo.aiSteps.map((step, idx) => {
+            const data = step.data || [...algo.vizData];
+            const vizType = algo.vizType || 'array';
+            const desc = (step.desc || '').toLowerCase();
+            const state = step.state || {};
+
+            const enriched = {
+                ...step,
+                data: data,
+                target: algo.target
+            };
+
+            if (vizType === 'sort' || desc.includes('sort') || desc.includes('swap') || desc.includes('compare')) {
+                enriched.type = 'sort';
+                enriched.comparing = undefined;
+                enriched.swapping = undefined;
+                enriched.sorted = [];
+
+                const arrIdx = (v) => {
+                    if (typeof v === 'number' && v >= 0 && v < data.length) return v;
+                    return undefined;
+                };
+
+                if (state.i !== undefined && state.j !== undefined) {
+                    enriched.comparing = [arrIdx(state.i), arrIdx(state.j)].filter(x => x !== undefined);
+                } else if (state.minIdx !== undefined && state.j !== undefined) {
+                    enriched.comparing = [arrIdx(state.minIdx), arrIdx(state.j)].filter(x => x !== undefined);
+                } else if (state.left !== undefined && state.right !== undefined) {
+                    enriched.comparing = [arrIdx(state.left), arrIdx(state.right)].filter(x => x !== undefined);
+                }
+
+                if (desc.includes('swap')) {
+                    enriched.swapping = enriched.comparing;
+                    enriched.comparing = undefined;
+                }
+
+                if (desc.includes('sorted') || desc.includes('placed') || desc.includes('complete')) {
+                    enriched.sorted = data.map((_, i) => i);
+                } else if (state.sorted) {
+                    enriched.sorted = Array.isArray(state.sorted) ? state.sorted : [];
+                }
+            } else if (vizType === 'tree' || desc.includes('recursive') || desc.includes('fibonacci') || desc.includes('fib')) {
+                enriched.type = 'tree';
+                enriched.node = state.node || state.current || `node-${idx}`;
+                enriched.val = state.result !== undefined ? state.result : (state.val !== undefined ? state.val : null);
+                enriched.depth = state.depth !== undefined ? state.depth : Math.min(idx, 4);
+            } else if (vizType === 'linkedlist' || desc.includes('linked') || desc.includes('node') || desc.includes('reverse')) {
+                enriched.type = 'linkedlist';
+                enriched.currentIdx = state.index !== undefined ? state.index : (state.current !== undefined ? state.current : idx % data.length);
+                enriched.reversedIdx = idx;
+                enriched.prevData = state.prev || null;
+            } else if (vizType === 'graph' || desc.includes('visit') || desc.includes('traverse') || desc.includes('bfs') || desc.includes('dfs')) {
+                enriched.type = 'graph';
+                enriched.nodes = algo.vizData;
+                enriched.edges = algo.vizConfig?.edges || [];
+                enriched.visited = state.visited || [];
+                enriched.current = state.current || state.node;
+                enriched.queue = state.queue || state.stack || [];
+            } else {
+                enriched.type = 'search';
+                const idxVal = state.index !== undefined ? state.index : (state.i !== undefined ? state.i : undefined);
+                enriched.comparing = arrIdx(idxVal);
+                enriched.found = desc.includes('found') || desc.includes('return');
+                enriched.target = algo.target;
+
+                function arrIdx(v) {
+                    if (typeof v === 'number' && v >= 0 && v < data.length) return v;
+                    return undefined;
+                }
+            }
+
+            return enriched;
+        });
         return;
     }
 
@@ -964,20 +1032,26 @@ function drawArrayViz(step) {
         let borderColor = 'rgba(255,255,255,0.06)';
 
         if (step.type === 'search') {
-            if (i === step.comparing) {
-                color = step.found ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)';
-                borderColor = step.found ? '#22c55e' : '#ef4444';
+            if (step.comparing === i) {
+                color = step.found ? 'rgba(34,197,94,0.3)' : 'rgba(218,112,20,0.25)';
+                borderColor = step.found ? '#22c55e' : '#DA7014';
                 textColor = '#fff';
             }
         } else if (step.type === 'pair') {
             if (i === step.currentIndex) {
-                color = 'rgba(218,112,20,0.2)';
+                color = 'rgba(218,112,20,0.25)';
                 borderColor = '#DA7014';
                 textColor = '#fff';
             }
             if (step.found && i === step.pairIndex) {
-                color = 'rgba(34,197,94,0.2)';
+                color = 'rgba(34,197,94,0.3)';
                 borderColor = '#22c55e';
+                textColor = '#fff';
+            }
+        } else if (step.comparing !== undefined) {
+            if (step.comparing === i) {
+                color = 'rgba(218,112,20,0.25)';
+                borderColor = '#DA7014';
                 textColor = '#fff';
             }
         }
