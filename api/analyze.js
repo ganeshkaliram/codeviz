@@ -92,7 +92,7 @@ Question: ${question}`
             return res.status(500).json({ error: data.error.message || 'API error' });
         }
 
-        const content = data.choices?.[0]?.message?.content;
+        const content = data.choices?.[0]?.message?.content || data.choices?.[0]?.text;
 
         if (!content) {
             return res.status(500).json({ error: 'No response from AI', raw: JSON.stringify(data) });
@@ -101,7 +101,12 @@ Question: ${question}`
         let parsed;
         try {
             const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            parsed = JSON.parse(cleaned);
+            const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                parsed = JSON.parse(jsonMatch[0]);
+            } else {
+                throw new Error('No JSON found in response');
+            }
         } catch (parseErr) {
             return res.status(500).json({ error: 'Failed to parse AI response', raw: content });
         }
